@@ -29,8 +29,10 @@ def write_real_data(data, prediction):
     data["model_version"] = model_info["version"]
     
     s3 = boto3.client("s3")
-    bucket_name = "fiap-ds-mlops"
-    s3_path = "laptop-prediction-real-data"
+    #bucket_name = "fiap-ds-mlops"
+    bucket_name = "bucketfiapmlopslaptopprice"
+    #s3_path = "laptop-prediction-real-data"
+    s3_path = "dataset"
     
     try:
         existing_object = s3.get_object(Bucket=bucket_name, Key=f'{s3_path}/{file_name}')
@@ -92,7 +94,7 @@ def prepare_payload(data):
     conditions = {
         "brand": {"asus","dell","hp","lenovo","other"},
         "processor_brand": {"amd","intel","m1"},
-        "processor_name": {"core i3","core i5","core i7","other","ryzen 5","ryzen 7"},
+        "processor_name": {"core i3","core i5","core i7","other","ryzen 5"},
         "os": {"other","windows"},
         "weight": {"casual","gaming","thinnlight"},
         "touchscreen": {"0","1"},
@@ -105,3 +107,53 @@ def prepare_payload(data):
             data_processed.append(1 if data[key] == value else 0)
             
     return data_processed
+
+def handler(event, context=False):
+    """
+        Função de entrada para execucao do modelo.
+        Args:
+            event (dict): dicionario de dados com todos os atributos.
+            context (object, optional): Contexto da execução (opcional).
+            
+            Returns:
+                json: predicao do preco do laptop em BRL.
+    """
+
+    print(event)
+    print(context)
+    
+    if "body" in event:
+        print("Body found in event, invoke by API Gateway")
+        
+        body_str = event.get("body", "{}")
+        body = json.loads(body_str)
+        print(body)
+        
+        data = body.get("data", {})
+    else:
+        print("No body found in event, invoke by Lambda")
+        data = event.get("data", {})
+        
+    print(data)
+        
+    data_processed = prepare_payload(data)
+    
+    prediction = model.predict([data_processed])
+   
+    
+    prediction = int(prediction[0])
+    print(f"Prediction: {prediction}")
+     
+    write_real_data(data, prediction)
+    input_metrics(data, prediction)
+    
+    return { 
+        "statusCode": 200,
+        "headers": {
+            'Content-Type': 'application/json'
+        },
+        "body": json.dumps({
+            'prediction': prediction,
+            'version': model_info["version"],
+        })
+    }

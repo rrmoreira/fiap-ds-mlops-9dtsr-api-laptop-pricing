@@ -26,6 +26,11 @@ download_path = client.download_artifacts(
     dst_path="."
 )
 
+print(f"Lastest model version: {latest.version}")
+print(f"Model run ID: {latest.run_id}")
+
+print(f"Writing model metadata...")
+
 model_metadata = {
     "model_name": model_name,
     "version": latest.version,
@@ -36,3 +41,5 @@ model_metadata = {
 
 with open("model/model_metadata.json", "w") as f:
     json.dump(model_metadata, f, indent=2)
+    
+print(f"Latest model downloaded successfully to: {download_path}")
